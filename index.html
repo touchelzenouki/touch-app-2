@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>تاتش الزنوكي 2 - نظام إدارة المبيعات</title>
+<title>تاتش الزنوكي - نظام إدارة المبيعات</title>
 
 <!-- ============ إعدادات تطبيق الويب التقدمي (PWA) — عشان يتثبت زي أي تطبيق حقيقي ============ -->
 <link rel="manifest" href="/touch-app-2/manifest.json">
@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="/touch-app-2/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="تاتش الزنوكي 2">
+<meta name="apple-mobile-web-app-title" content="تاتش الزنوكي">
 <!-- أندرويد -->
 <meta name="mobile-web-app-capable" content="yes">
 
@@ -1110,7 +1110,7 @@
   <div class="headerLeft">
     <div>
       <span class="kicker">نظام إدارة المبيعات</span>
-      <h1 id="pageTitle">تاتش الزنوكي 2</h1>
+      <h1 id="pageTitle">تاتش الزنوكي</h1>
       <span class="brandLine"></span>
       <div class="sub" id="pageSub">جاري التحميل...</div>
     </div>
@@ -2328,7 +2328,7 @@
   function goHome(){
     clearMsg();
     state.screen = null;
-    document.getElementById('pageTitle').textContent = 'تاتش الزنوكي 2';
+    document.getElementById('pageTitle').textContent = 'تاتش الزنوكي';
     document.getElementById('pageSub').textContent = state.user ? state.user.name : '';
     setView('viewHome');
     prefetchCatalogSoon_();
