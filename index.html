@@ -1867,7 +1867,7 @@
 
   // رقم إصدار التطبيق — غيّره كل ما تعمل تحديث حقيقي، بيظهر في شاشة "إعداداتي" تحت زرار الحفظ
   // عشان لو مندوب فيه مشكلة تقدر تسأله "شايف إصدار كام؟" وتعرف على طول لو لسه شايل نسخة قديمة
-  const APP_VERSION_ = 'v2.6.1-n2';
+  const APP_VERSION_ = 'v2.6.2-n2';
 
   // ============ عدّاد سرعة التطبيق ============
   // بيسجل آخر 25 طلب: الوقت الكلي، ووقت السيرفر (جوجل) لوحده — الفرق بينهم = وقت النت.
@@ -2501,13 +2501,15 @@
   // شاشة "إدارة المناديب والمشرفين" بقت مقصورة على صاحب الحساب المحمي بس، مش كل المشرفين
   // (لازم تتطابق مع PROTECTED_OWNER_EMAIL_ في Code.gs بالظبط)
   const OWNER_EMAIL_ = 'm.s.e.m.eyg@gmail.com';
+  // أصحاب الحساب (الإدارة كاملة) — لازم تطابق is_owner في Supabase
+  const OWNER_EMAILS_ = ['m.s.e.m.eyg@gmail.com', 'to.mahmoud153@gmail.com'];
 
   function applyLoggedInUser(user, isAdmin, targetProgress, homeStats){
     state.homeStats_ = homeStats || state.homeStats_ || null;
     state.user = user;
     state.isAdmin = !!isAdmin;
     state.targetProgress_ = targetProgress || null;
-    state.isOwner = !!(user && String(user.email || '').trim().toLowerCase() === OWNER_EMAIL_);
+    state.isOwner = !!(user && OWNER_EMAILS_.indexOf(String(user.email || '').trim().toLowerCase()) !== -1);
     document.getElementById('homeUserName').textContent = user.name;
     document.getElementById('adminLink').hidden = !state.isOwner;
     renderHomeBadgeIcon(user.photoUrl);
