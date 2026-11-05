@@ -4624,22 +4624,19 @@
         ? [code, it['اسم الصنف'] + kindSuffix, it['سبب المرتجع'] || '—', it['الكمية'], it['السعر'], it['الاجمالي']]
         : [code, it['اسم الصنف'] + kindSuffix, it['الكمية'], it['السعر'], it['الاجمالي']];
     });
+    const branch = ('branch' in result) ? (result.branch || '—') : (state.user.branch || '—');
     return {
       // لو الفاتورة متطابقة بنسبة كبيرة مع فاتورة تانية نفس اليوم — الصورة والإكسل بيطلعوا أحمر
       duplicate: result.duplicate || null,
       fileName: (result.duplicate ? 'مكررة - ' : '') + label + ' - ' + safeDateForFile(result.date) + ' - ' + state.user.name,
       reportTitle: 'تقرير ' + label,
-      meta: [
-        ['اسم المندوب', state.user.name],
-        ['الفرع', ('branch' in result) ? (result.branch || '—') : (state.user.branch || '—')],
-        ['التاريخ', result.date],
-        ['نوع العملية', label],
-      ],
+      // شكل "كارت" أخضر/أصفر زي تقارير الإكسل القديمة: 3 سطور بيانات على اليمين + صندوقين
+      // صفراوين (الإجمالي وعدد القطع) محاذيين لأعمدة الكمية/الإجمالي في الجدول تحتهم بالظبط
+      greenCard: true,
+      cardLines: [label + ' فرع / ' + branch, 'اسم المندوب / ' + state.user.name, 'التاريخ ' + result.date],
+      cardTotals: { qty: totalQty, value: result.total },
       headers: isReturns ? ['الكود', 'اسم الصنف', 'سبب المرتجع', 'الكمية', 'السعر', 'الاجمالي'] : ['الكود', 'اسم الصنف', 'الكمية', 'السعر', 'الاجمالي'],
       rows: rows,
-      totalsLabel: 'الإجمالي',
-      totalsValue: result.total,
-      totalsExtra: [{ label: 'إجمالي القطع', value: totalQty, isCurrency: false }],
     };
   }
 
@@ -5835,10 +5832,15 @@
   function brandPalette_(opts){
     if(opts && opts.duplicate){
       return { accent:'FFF4A6A6', banner:'FFB71C1C', subtitle:'FFD32F2F', metaBg:'FFFDECEC',
-               metaBorder:'FFF5C6C6', grid:'FFF5D0D0', zebra:'FFFDECEC', frame:'FFB71C1C' };
+               metaBorder:'FFF5C6C6', grid:'FFF5D0D0', zebra:'FFFDECEC', frame:'FFB71C1C', highlight:'FFFFD966' };
+    }
+    // لون أخضر/أصفر للفواتير (بيع/مرتجع) — طلب المندوب يبقى التقرير بنفس شكل تقارير اكسل القديمة
+    if(opts && opts.greenCard){
+      return { accent:'FF4F7942', banner:'FF6AA84F', subtitle:'FF8FCE7E', metaBg:'FFFFFFFF',
+               metaBorder:'FFD9EAD3', grid:'FFD9EAD3', zebra:'FFF2F9F1', frame:'FF4F7942', highlight:'FFFFD966' };
     }
     return { accent:BRAND_ACCENT, banner:BRAND_BANNER, subtitle:BRAND_SUBTITLE_BG, metaBg:BRAND_META_BG,
-             metaBorder:BRAND_META_BORDER, grid:BRAND_GRID, zebra:BRAND_ZEBRA, frame:BRAND_FRAME };
+             metaBorder:BRAND_META_BORDER, grid:BRAND_GRID, zebra:BRAND_ZEBRA, frame:BRAND_FRAME, highlight:'FFFFD966' };
   }
   function dupWarningText_(d){
     return '⚠ فاتورة مكررة — متطابقة بنسبة ' + d.pct + '% مع فاتورة تانية اتسجلت نفس اليوم' + (d.time ? ' الساعة ' + d.time : '');
@@ -5915,28 +5917,61 @@
       r++;
     }
     const metaFirstRow = r;
-    meta.forEach(function(pair){
-      ws.mergeCells(r, 1, r, colCount);
-      const cell = ws.getCell(r, 1);
-      cell.value = pair[0] + ':   ' + pair[1];
-      cell.font = { name: numFont, bold: true, size: 14, color: { argb: 'FF1A1A1A' } };
-      cell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1, wrapText: true };
-
-      for(let c = 1; c <= colCount; c++){
-        ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_META_BG } };
-        ws.getCell(r, c).border = {
-          top: { style: 'hair', color: { argb: BRAND_META_BORDER } },
-          bottom: { style: 'hair', color: { argb: BRAND_META_BORDER } },
-          left: { style: 'hair', color: { argb: BRAND_META_BORDER } },
-          right: { style: 'hair', color: { argb: BRAND_META_BORDER } },
-        };
+    if(opts.greenCard){
+      // "كارت" الفاتورة: 3 سطور بيانات على اليمين (مدموجة) + صندوقين صفراوين (كمية/إجمالي)
+      // محاذيين لنفس عمودي الكمية والإجمالي في جدول الأصناف تحتهم — زي تقارير الإكسل القديمة
+      const idxQty = headers.indexOf('الكمية');
+      const idxTotal = headers.indexOf('الاجمالي');
+      const leadCount = idxQty >= 0 ? idxQty : 1;
+      const lines = opts.cardLines || [];
+      const totals = opts.cardTotals || {};
+      const cardRows = Math.max(lines.length, 1);
+      ws.mergeCells(r, 1, r + cardRows - 1, leadCount);
+      const textCell = ws.getCell(r, 1);
+      textCell.value = lines.join('\n');
+      textCell.font = { name: numFont, bold: true, size: 13, color: { argb: 'FF1A1A1A' } };
+      textCell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1, wrapText: true };
+      for(let c = 1; c <= leadCount; c++){
+        ws.getCell(r, c).border = { top: { style: 'medium', color: { argb: BRAND_ACCENT } }, bottom: { style: 'medium', color: { argb: BRAND_ACCENT } }, left: { style: 'medium', color: { argb: BRAND_ACCENT } }, right: { style: 'medium', color: { argb: BRAND_ACCENT } } };
       }
-      // من غير ارتفاع صف ثابت (customHeight) عشان اكسل يعمل auto-fit للنص لو لف على أكتر من سطر
-      r++;
-    });
+      for(let i = leadCount + 1; i <= colCount; i++){
+        const isHighlight = (i - 1 === idxQty) || (i - 1 === idxTotal);
+        ws.mergeCells(r, i, r + cardRows - 1, i);
+        const cell = ws.getCell(r, i);
+        if(i - 1 === idxQty) cell.value = (typeof totals.qty === 'number') ? totals.qty : null;
+        else if(i - 1 === idxTotal) cell.value = (typeof totals.value === 'number') ? totals.value : null;
+        if(cell.value != null) cell.numFmt = '#,##0';
+        cell.font = { name: numFont, bold: true, size: isHighlight ? 18 : 13, color: { argb: 'FF1A1A1A' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        if(isHighlight) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: pal.highlight } };
+        cell.border = { top: { style: 'medium', color: { argb: BRAND_ACCENT } }, bottom: { style: 'medium', color: { argb: BRAND_ACCENT } }, left: { style: 'medium', color: { argb: BRAND_ACCENT } }, right: { style: 'medium', color: { argb: BRAND_ACCENT } } };
+      }
+      ws.getRow(r).height = 22;
+      r += cardRows;
+    } else {
+      meta.forEach(function(pair){
+        ws.mergeCells(r, 1, r, colCount);
+        const cell = ws.getCell(r, 1);
+        cell.value = pair[0] + ':   ' + pair[1];
+        cell.font = { name: numFont, bold: true, size: 14, color: { argb: 'FF1A1A1A' } };
+        cell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1, wrapText: true };
+
+        for(let c = 1; c <= colCount; c++){
+          ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_META_BG } };
+          ws.getCell(r, c).border = {
+            top: { style: 'hair', color: { argb: BRAND_META_BORDER } },
+            bottom: { style: 'hair', color: { argb: BRAND_META_BORDER } },
+            left: { style: 'hair', color: { argb: BRAND_META_BORDER } },
+            right: { style: 'hair', color: { argb: BRAND_META_BORDER } },
+          };
+        }
+        // من غير ارتفاع صف ثابت (customHeight) عشان اكسل يعمل auto-fit للنص لو لف على أكتر من سطر
+        r++;
+      });
+    }
     // إطار خارجي غامق حوالين صندوق البيانات كله عشان يبان كارت متكامل
     const metaLastRow = r - 1;
-    if(metaLastRow >= metaFirstRow){
+    if(!opts.greenCard && metaLastRow >= metaFirstRow){
       for(let c = 1; c <= colCount; c++){
         const topCell = ws.getCell(metaFirstRow, c);
         topCell.border = Object.assign({}, topCell.border, { top: { style: 'medium', color: { argb: BRAND_ACCENT } } });
@@ -6029,8 +6064,8 @@
       rightCell.border = Object.assign({}, rightCell.border, { right: { style: 'medium', color: { argb: BRAND_FRAME } } });
     }
 
-    // صف الإجمالي (لو موجود)
-    if(opts.totalsLabel){
+    // صف الإجمالي (لو موجود) — متسكّنش للفواتير (الإجمالي ظاهر فعلًا في الكارت فوق)
+    if(opts.totalsLabel && !opts.greenCard){
       ws.mergeCells(r, 1, r, colCount - 1);
       const labelCell = ws.getCell(r, 1);
       labelCell.value = opts.totalsLabel;
@@ -6058,7 +6093,7 @@
     }
 
     // صفوف إجماليات إضافية (زي "إجمالي القطع") — نفس شكل صف الإجمالي الرئيسي بس بلون أفتح شوية
-    (opts.totalsExtra || []).forEach(function(t){
+    (opts.greenCard ? [] : (opts.totalsExtra || [])).forEach(function(t){
       ws.mergeCells(r, 1, r, colCount - 1);
       const labelCell = ws.getCell(r, 1);
       labelCell.value = t.label;
@@ -6182,6 +6217,7 @@
     const C_ZEBRA = argbToCss_(pal.zebra);
     const C_FRAME = argbToCss_(pal.frame);
     const C_ACCENT = argbToCss_(pal.accent);
+    const C_HIGHLIGHT = argbToCss_(pal.highlight);
 
     const isNumericCol = paged
       ? [true].concat(baseHeaders.map(function(_, i){ return isNumericCol_(allRows.map(function(r){ return r[i]; })); }))
@@ -6195,6 +6231,32 @@
         '<span style="color:' + C_BANNER + ';">' + escapeHtml_(pair[0]) + ':</span>&nbsp;&nbsp;' + escapeHtml_(String(pair[1])) +
         '</div>';
     }).join('');
+
+    // "كارت" الفاتورة (بيع/مرتجع): 3 سطور بيانات على اليمين + صندوقين صفراوين (الكمية/الإجمالي)
+    // محاذيين لنفس عمودي الكمية والإجمالي في جدول الأصناف تحتهم — زي تقارير الإكسل القديمة بالظبط
+    let cardHtml = '';
+    if(opts.greenCard){
+      const idxQty = baseHeaders.indexOf('الكمية');
+      const idxPrice = baseHeaders.indexOf('السعر');
+      const idxTotal = baseHeaders.indexOf('الاجمالي');
+      const leadCount = idxQty >= 0 ? idxQty : 1;
+      const lines = opts.cardLines || [];
+      const totals = opts.cardTotals || {};
+      const textCell = '<td colspan="' + leadCount + '" style="padding:12px 16px; text-align:right; vertical-align:middle; border:2px solid ' + C_ACCENT + '; background:#fff;">' +
+        lines.map(function(l){ return '<div style="font-size:16px; font-weight:800; color:#1a1a1a; line-height:1.9;">' + escapeHtml_(l) + '</div>'; }).join('') +
+        '</td>';
+      const cells = [];
+      for(let i = leadCount; i < baseHeaders.length; i++){
+        if(i === idxQty){
+          cells.push('<td style="padding:14px 8px; text-align:center; vertical-align:middle; font-size:22px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.qty === 'number' ? totals.qty.toLocaleString('en-US') : '') + '</td>');
+        } else if(i === idxTotal){
+          cells.push('<td style="padding:14px 8px; text-align:center; vertical-align:middle; font-size:24px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.value === 'number' ? totals.value.toLocaleString('en-US', {maximumFractionDigits:0}) : '') + '</td>');
+        } else {
+          cells.push('<td style="border:2px solid ' + C_ACCENT + '; background:#fff;"></td>');
+        }
+      }
+      cardHtml = '<table style="width:100%; border-collapse:collapse; margin-bottom:14px;"><tbody><tr>' + textCell + cells.join('') + '</tr></tbody></table>';
+    }
 
     const headHtml = headers.map(function(h){
       return '<th style="padding:13px 10px; font-size:18px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_ACCENT + ';">' + escapeHtml_(h) + '</th>';
@@ -6213,7 +6275,7 @@
       return '<tr>' + cells + '</tr>';
     }).join('');
 
-    const totalsHtml = (opts.totalsLabel && isLastPage) ? (
+    const totalsHtml = (opts.totalsLabel && isLastPage && !opts.greenCard) ? (
       '<tr>' +
         '<td colspan="' + (headers.length - 1) + '" style="padding:13px 10px; font-size:19px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_FRAME + '; text-align:right;">' + escapeHtml_(opts.totalsLabel) + '</td>' +
         '<td style="padding:13px 10px; font-size:20px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_FRAME + '; text-align:center; white-space:nowrap;">' +
@@ -6224,7 +6286,7 @@
       '</tr>'
     ) : '';
 
-    const totalsExtraHtml = (isLastPage && opts.totalsExtra && opts.totalsExtra.length) ? opts.totalsExtra.map(function(t){
+    const totalsExtraHtml = (isLastPage && !opts.greenCard && opts.totalsExtra && opts.totalsExtra.length) ? opts.totalsExtra.map(function(t){
       return '<tr>' +
         '<td colspan="' + (headers.length - 1) + '" style="padding:11px 10px; font-size:17px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:right;">' + escapeHtml_(t.label) + '</td>' +
         '<td style="padding:11px 10px; font-size:18px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:center; white-space:nowrap;">' +
@@ -6246,7 +6308,7 @@
         '<div style="background:' + C_BANNER + '; color:#fff; text-align:center; font-size:20px; font-weight:900; padding:16px;">الزنوكي لصناعة الأجهزة الكهربائية</div>' +
         '<div style="background:' + C_SUBTITLE + '; color:#fff; text-align:center; font-size:' + (paged ? '17px' : '14.5px') + '; font-weight:800; padding:10px;">' + escapeHtml_(opts.reportTitle || 'تقرير') + (paged ? ' — صفحة ' + page.page + ' من ' + page.pages : '') + '</div>' +
         (opts.duplicate ? '<div style="background:#7f0000; color:#fff; text-align:center; font-size:19px; font-weight:900; padding:13px; line-height:1.6;">' + escapeHtml_(dupWarningText_(opts.duplicate)) + '</div>' : '') +
-        '<div style="border:2px solid ' + C_ACCENT + '; border-top:none; margin-bottom:14px;">' + metaHtml + '</div>' +
+        (opts.greenCard ? cardHtml : '<div style="border:2px solid ' + C_ACCENT + '; border-top:none; margin-bottom:14px;">' + metaHtml + '</div>') +
         '<table style="width:100%; border-collapse:collapse; border:2px solid ' + C_FRAME + ';"><thead><tr>' + headHtml + '</tr></thead><tbody>' + rowsHtml + totalsHtml + totalsExtraHtml + '</tbody></table>' +
         (paged && !isLastPage ? '<div style="text-align:center; font-size:17px; font-weight:800; color:' + C_BANNER + '; margin-top:12px;">يتبع في الصفحة ' + (page.page + 1) + ' ←</div>' : '') +
         '<div style="text-align:center; font-size:11px; color:#9a9a9a; font-style:italic; margin-top:14px;">تم إنشاء الملف تلقائيًا بتاريخ ' + stamp + '</div>' +
