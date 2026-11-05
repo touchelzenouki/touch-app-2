@@ -2032,6 +2032,24 @@
     // en-US بدل ar-EG عشان الأرقام تفضل بالإنجليزي (0123..) مش بالهندي العربي (٠١٢٣..)
     return n.toLocaleString('en-US', {maximumFractionDigits:2});
   }
+  // خريطة "اسم الصنف → كوده" محفوظة على الجهاز (مش مرتبطة بمندوب معين)، بتتحدّث كل مرة الكتالوج
+  // بييجي من السيرفر، عشان كود الصنف يفضل متاح في التقارير حتى لو اتفتحت شاشة (زي سجل الفواتير)
+  // من غير ما الكتالوج يكون اتحمّل في نفس الزيارة دي
+  const ITEM_CODE_MAP_KEY_ = 'tz2_item_codes';
+  function setAsnaf_(list){
+    state.asnaf = list || [];
+    try{
+      const map = JSON.parse(localStorage.getItem(ITEM_CODE_MAP_KEY_) || '{}');
+      state.asnaf.forEach(function(a){ if(a && a.name && a.code) map[a.name] = a.code; });
+      localStorage.setItem(ITEM_CODE_MAP_KEY_, JSON.stringify(map));
+    }catch(e){}
+  }
+  function codeForItem_(name){
+    try{
+      const map = JSON.parse(localStorage.getItem(ITEM_CODE_MAP_KEY_) || '{}');
+      return map[name] || '';
+    }catch(e){ return ''; }
+  }
   // تحويل تاريخ dd/mm/yyyy لصيغة صالحة كاسم ملف (بدون شرطة مائلة)
   function safeDateForFile(d){
     return String(d || '').replace(/\//g, '-');
@@ -2300,13 +2318,13 @@
   function openWithCatalog_(screenName, render, onFresh){
     const cached = localCacheGet_('catalog');
     if(cached && cached.v){
-      state.asnaf = cached.v.asnaf || [];
+      setAsnaf_(cached.v.asnaf || []);
       state.myPrices = cached.v.prices || {};
       render();
       fetchCatalog_()
         .then(function(c){
           if(state.screen !== screenName) return;
-          state.asnaf = c.asnaf;
+          setAsnaf_(c.asnaf);
           state.myPrices = c.prices;
           if(onFresh) onFresh(c, cached.v);
         })
@@ -2316,7 +2334,7 @@
     showLoading(true);
     fetchCatalog_()
       .then(function(c){
-        state.asnaf = c.asnaf;
+        setAsnaf_(c.asnaf);
         state.myPrices = c.prices;
         showLoading(false);
         render();
@@ -4597,11 +4615,14 @@
   // (كنسخة احتياطية تانية) عشان منكررش منطق البناء في مكانين
   function buildInvoiceExcelOpts(result, isReturns){
     const label = isReturns ? 'مرتجع' : 'مبيعات';
+    let totalQty = 0;
     const rows = result.items.map(it => {
       const kindSuffix = (isReturns && (it['نوع المرتجع'] === 'تالف' || it['نوع المرتجع'] === 'رجوع للشركة')) ? ' (' + it['نوع المرتجع'] + ')' : '';
+      const code = codeForItem_(it['اسم الصنف']) || '—';
+      totalQty += Math.abs(Number(it['الكمية']) || 0);
       return isReturns
-        ? [it['اسم الصنف'] + kindSuffix, it['سبب المرتجع'] || '—', it['الكمية'], it['السعر'], it['الاجمالي']]
-        : [it['اسم الصنف'] + kindSuffix, it['الكمية'], it['السعر'], it['الاجمالي']];
+        ? [code, it['اسم الصنف'] + kindSuffix, it['سبب المرتجع'] || '—', it['الكمية'], it['السعر'], it['الاجمالي']]
+        : [code, it['اسم الصنف'] + kindSuffix, it['الكمية'], it['السعر'], it['الاجمالي']];
     });
     return {
       // لو الفاتورة متطابقة بنسبة كبيرة مع فاتورة تانية نفس اليوم — الصورة والإكسل بيطلعوا أحمر
@@ -4614,10 +4635,11 @@
         ['التاريخ', result.date],
         ['نوع العملية', label],
       ],
-      headers: isReturns ? ['اسم الصنف', 'سبب المرتجع', 'الكمية', 'السعر', 'الاجمالي'] : ['اسم الصنف', 'الكمية', 'السعر', 'الاجمالي'],
+      headers: isReturns ? ['الكود', 'اسم الصنف', 'سبب المرتجع', 'الكمية', 'السعر', 'الاجمالي'] : ['الكود', 'اسم الصنف', 'الكمية', 'السعر', 'الاجمالي'],
       rows: rows,
       totalsLabel: 'الإجمالي',
       totalsValue: result.total,
+      totalsExtra: [{ label: 'إجمالي القطع', value: totalQty, isCurrency: false }],
     };
   }
 
@@ -4776,7 +4798,7 @@
     state.jardSaveInFlight = false;
     callApi('bootstrapJard', [state.auth])
       .then(function(data){
-        state.asnaf = data.asnaf;
+        setAsnaf_(data.asnaf);
         state.jardBalancesHidden_ = !!data.balancesHidden;
         showLoading(false);
         renderJard();
@@ -6035,6 +6057,33 @@
       r++;
     }
 
+    // صفوف إجماليات إضافية (زي "إجمالي القطع") — نفس شكل صف الإجمالي الرئيسي بس بلون أفتح شوية
+    (opts.totalsExtra || []).forEach(function(t){
+      ws.mergeCells(r, 1, r, colCount - 1);
+      const labelCell = ws.getCell(r, 1);
+      labelCell.value = t.label;
+      labelCell.font = { name: numFont, bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      labelCell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+      labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_SUBTITLE_BG } };
+      const valCell = ws.getCell(r, colCount);
+      valCell.value = t.value;
+      if(typeof t.value === 'number'){
+        valCell.numFmt = (t.isCurrency === false) ? '#,##0' : '#,##0.00 "ج.م"';
+      }
+      valCell.font = { name: numFont, bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
+      valCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_SUBTITLE_BG } };
+      ws.getRow(r).height = 27;
+      for(let c = 1; c <= colCount; c++){
+        ws.getCell(r, c).border = {
+          bottom: { style: 'medium', color: { argb: BRAND_FRAME } },
+          left: { style: 'medium', color: { argb: BRAND_FRAME } },
+          right: { style: 'medium', color: { argb: BRAND_FRAME } },
+        };
+      }
+      r++;
+    });
+
     // سطر تذييل: تاريخ ووقت إنشاء الملف (مفيد لتتبع أي نسخة هي الأحدث)
     r++;
     ws.mergeCells(r, 1, r, colCount);
@@ -6175,6 +6224,17 @@
       '</tr>'
     ) : '';
 
+    const totalsExtraHtml = (isLastPage && opts.totalsExtra && opts.totalsExtra.length) ? opts.totalsExtra.map(function(t){
+      return '<tr>' +
+        '<td colspan="' + (headers.length - 1) + '" style="padding:11px 10px; font-size:17px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:right;">' + escapeHtml_(t.label) + '</td>' +
+        '<td style="padding:11px 10px; font-size:18px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:center; white-space:nowrap;">' +
+          (typeof t.value === 'number'
+            ? (t.isCurrency === false ? t.value.toLocaleString('en-US') : t.value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ج.م')
+            : escapeHtml_(String(t.value))) +
+        '</td>' +
+      '</tr>';
+    }).join('') : '';
+
     const now = new Date();
     const pad2 = function(n){ return String(n).padStart(2, '0'); };
     const stamp = pad2(now.getDate()) + '/' + pad2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
@@ -6187,7 +6247,7 @@
         '<div style="background:' + C_SUBTITLE + '; color:#fff; text-align:center; font-size:' + (paged ? '17px' : '14.5px') + '; font-weight:800; padding:10px;">' + escapeHtml_(opts.reportTitle || 'تقرير') + (paged ? ' — صفحة ' + page.page + ' من ' + page.pages : '') + '</div>' +
         (opts.duplicate ? '<div style="background:#7f0000; color:#fff; text-align:center; font-size:19px; font-weight:900; padding:13px; line-height:1.6;">' + escapeHtml_(dupWarningText_(opts.duplicate)) + '</div>' : '') +
         '<div style="border:2px solid ' + C_ACCENT + '; border-top:none; margin-bottom:14px;">' + metaHtml + '</div>' +
-        '<table style="width:100%; border-collapse:collapse; border:2px solid ' + C_FRAME + ';"><thead><tr>' + headHtml + '</tr></thead><tbody>' + rowsHtml + totalsHtml + '</tbody></table>' +
+        '<table style="width:100%; border-collapse:collapse; border:2px solid ' + C_FRAME + ';"><thead><tr>' + headHtml + '</tr></thead><tbody>' + rowsHtml + totalsHtml + totalsExtraHtml + '</tbody></table>' +
         (paged && !isLastPage ? '<div style="text-align:center; font-size:17px; font-weight:800; color:' + C_BANNER + '; margin-top:12px;">يتبع في الصفحة ' + (page.page + 1) + ' ←</div>' : '') +
         '<div style="text-align:center; font-size:11px; color:#9a9a9a; font-style:italic; margin-top:14px;">تم إنشاء الملف تلقائيًا بتاريخ ' + stamp + '</div>' +
       '</div>';
