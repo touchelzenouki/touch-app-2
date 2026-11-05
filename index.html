@@ -6031,7 +6031,7 @@
           right: { style: 'hair', color: { argb: BRAND_GRID } },
         };
         if(colIsCurrency[i]){
-          cell.numFmt = '#,##0.00 "ج.م"';
+          cell.numFmt = '#,##0.00';
         } else if(colIsNumeric[i]){
           cell.numFmt = colIsInteger[i] ? '#,##0' : '#,##0.00';
         }
@@ -6075,7 +6075,7 @@
       const valCell = ws.getCell(r, colCount);
       valCell.value = opts.totalsValue;
       if(typeof opts.totalsValue === 'number'){
-        valCell.numFmt = (opts.totalsIsCurrency === false) ? '#,##0' : '#,##0.00 "ج.م"';
+        valCell.numFmt = (opts.totalsIsCurrency === false) ? '#,##0' : '#,##0.00';
       }
       valCell.font = { name: numFont, bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
       valCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -6103,7 +6103,7 @@
       const valCell = ws.getCell(r, colCount);
       valCell.value = t.value;
       if(typeof t.value === 'number'){
-        valCell.numFmt = (t.isCurrency === false) ? '#,##0' : '#,##0.00 "ج.م"';
+        valCell.numFmt = (t.isCurrency === false) ? '#,##0' : '#,##0.00';
       }
       valCell.font = { name: numFont, bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
       valCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -6227,7 +6227,7 @@
     const metaHtml = meta.map(function(pair, i){
       const isLast = i === meta.length - 1;
       return '<div style="padding:10px 14px; ' + (isLast ? '' : 'border-bottom:1px solid ' + C_META_BORDER + '; ') +
-        'font-size:16.5px; font-weight:700; color:#1a1a1a; background:' + C_META_BG + ';">' +
+        'font-size:19px; font-weight:700; color:#1a1a1a; background:' + C_META_BG + ';">' +
         '<span style="color:' + C_BANNER + ';">' + escapeHtml_(pair[0]) + ':</span>&nbsp;&nbsp;' + escapeHtml_(String(pair[1])) +
         '</div>';
     }).join('');
@@ -6242,15 +6242,15 @@
       const leadCount = idxQty >= 0 ? idxQty : 1;
       const lines = opts.cardLines || [];
       const totals = opts.cardTotals || {};
-      const textCell = '<td colspan="' + leadCount + '" style="padding:12px 16px; text-align:right; vertical-align:middle; border:2px solid ' + C_ACCENT + '; background:#fff;">' +
-        lines.map(function(l){ return '<div style="font-size:16px; font-weight:800; color:#1a1a1a; line-height:1.9;">' + escapeHtml_(l) + '</div>'; }).join('') +
+      const textCell = '<td colspan="' + leadCount + '" style="padding:14px 18px; text-align:right; vertical-align:middle; border:2px solid ' + C_ACCENT + '; background:#fff;">' +
+        lines.map(function(l){ return '<div style="font-size:19px; font-weight:800; color:#1a1a1a; line-height:1.9;">' + escapeHtml_(l) + '</div>'; }).join('') +
         '</td>';
       const cells = [];
       for(let i = leadCount; i < baseHeaders.length; i++){
         if(i === idxQty){
-          cells.push('<td style="padding:14px 8px; text-align:center; vertical-align:middle; font-size:22px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.qty === 'number' ? totals.qty.toLocaleString('en-US') : '') + '</td>');
+          cells.push('<td style="padding:16px 8px; text-align:center; vertical-align:middle; font-size:27px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.qty === 'number' ? totals.qty.toLocaleString('en-US') : '') + '</td>');
         } else if(i === idxTotal){
-          cells.push('<td style="padding:14px 8px; text-align:center; vertical-align:middle; font-size:24px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.value === 'number' ? totals.value.toLocaleString('en-US', {maximumFractionDigits:0}) : '') + '</td>');
+          cells.push('<td style="padding:16px 8px; text-align:center; vertical-align:middle; font-size:29px; font-weight:900; color:#1a1a1a; background:' + C_HIGHLIGHT + '; border:2px solid ' + C_ACCENT + ';">' + (typeof totals.value === 'number' ? totals.value.toLocaleString('en-US', {maximumFractionDigits:0}) : '') + '</td>');
         } else {
           cells.push('<td style="border:2px solid ' + C_ACCENT + '; background:#fff;"></td>');
         }
@@ -6259,7 +6259,7 @@
     }
 
     const headHtml = headers.map(function(h){
-      return '<th style="padding:13px 10px; font-size:18px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_ACCENT + ';">' + escapeHtml_(h) + '</th>';
+      return '<th style="padding:15px 10px; font-size:21px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_ACCENT + ';">' + escapeHtml_(h) + '</th>';
     }).join('');
 
     const rowsHtml = rows.map(function(row, ri){
@@ -6268,9 +6268,9 @@
         const align = isNumericCol[i] ? 'center' : 'right';
         let display = val === null || val === undefined ? '' : val;
         if(typeof display === 'number'){
-          display = isCurrencyCol[i] ? (display.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ج.م') : display.toLocaleString('en-US');
+          display = isCurrencyCol[i] ? display.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : display.toLocaleString('en-US');
         }
-        return '<td style="padding:12px 10px; font-size:19px; font-weight:800; color:#1a1a1a; text-align:' + align + ';' + (isNumericCol[i] ? ' white-space:nowrap;' : '') + ' border:1px solid ' + C_GRID + '; background:' + bg + ';">' + escapeHtml_(String(display)) + '</td>';
+        return '<td style="padding:14px 10px; font-size:22px; font-weight:800; color:#1a1a1a; text-align:' + align + ';' + (isNumericCol[i] ? ' white-space:nowrap;' : '') + ' border:1px solid ' + C_GRID + '; background:' + bg + ';">' + escapeHtml_(String(display)) + '</td>';
       }).join('');
       return '<tr>' + cells + '</tr>';
     }).join('');
@@ -6280,7 +6280,7 @@
         '<td colspan="' + (headers.length - 1) + '" style="padding:13px 10px; font-size:19px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_FRAME + '; text-align:right;">' + escapeHtml_(opts.totalsLabel) + '</td>' +
         '<td style="padding:13px 10px; font-size:20px; font-weight:800; color:#fff; background:' + C_BANNER + '; border:1px solid ' + C_FRAME + '; text-align:center; white-space:nowrap;">' +
           (typeof opts.totalsValue === 'number'
-            ? (opts.totalsIsCurrency === false ? opts.totalsValue.toLocaleString('en-US') : opts.totalsValue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ج.م')
+            ? (opts.totalsIsCurrency === false ? opts.totalsValue.toLocaleString('en-US') : opts.totalsValue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}))
             : escapeHtml_(String(opts.totalsValue))) +
         '</td>' +
       '</tr>'
@@ -6291,7 +6291,7 @@
         '<td colspan="' + (headers.length - 1) + '" style="padding:11px 10px; font-size:17px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:right;">' + escapeHtml_(t.label) + '</td>' +
         '<td style="padding:11px 10px; font-size:18px; font-weight:800; color:#fff; background:' + C_SUBTITLE + '; border:1px solid ' + C_FRAME + '; text-align:center; white-space:nowrap;">' +
           (typeof t.value === 'number'
-            ? (t.isCurrency === false ? t.value.toLocaleString('en-US') : t.value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ج.م')
+            ? (t.isCurrency === false ? t.value.toLocaleString('en-US') : t.value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}))
             : escapeHtml_(String(t.value))) +
         '</td>' +
       '</tr>';
@@ -6302,22 +6302,22 @@
     const stamp = pad2(now.getDate()) + '/' + pad2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
 
     const container = document.createElement('div');
-    container.style.cssText = 'position:fixed; top:0; left:-99999px; width:794px; background:#ffffff; direction:rtl; font-family:"Cairo","Tajawal",Arial,sans-serif;';
+    container.style.cssText = 'position:fixed; top:0; left:-99999px; width:980px; background:#ffffff; direction:rtl; font-family:"Cairo","Tajawal",Arial,sans-serif;';
     container.innerHTML =
-      '<div style="padding:24px;">' +
-        '<div style="background:' + C_BANNER + '; color:#fff; text-align:center; font-size:20px; font-weight:900; padding:16px;">الزنوكي لصناعة الأجهزة الكهربائية</div>' +
-        '<div style="background:' + C_SUBTITLE + '; color:#fff; text-align:center; font-size:' + (paged ? '17px' : '14.5px') + '; font-weight:800; padding:10px;">' + escapeHtml_(opts.reportTitle || 'تقرير') + (paged ? ' — صفحة ' + page.page + ' من ' + page.pages : '') + '</div>' +
-        (opts.duplicate ? '<div style="background:#7f0000; color:#fff; text-align:center; font-size:19px; font-weight:900; padding:13px; line-height:1.6;">' + escapeHtml_(dupWarningText_(opts.duplicate)) + '</div>' : '') +
+      '<div style="padding:28px;">' +
+        '<div style="background:' + C_BANNER + '; color:#fff; text-align:center; font-size:25px; font-weight:900; padding:19px;">الزنوكي لصناعة الأجهزة الكهربائية</div>' +
+        '<div style="background:' + C_SUBTITLE + '; color:#fff; text-align:center; font-size:' + (paged ? '20px' : '17.5px') + '; font-weight:800; padding:12px;">' + escapeHtml_(opts.reportTitle || 'تقرير') + (paged ? ' — صفحة ' + page.page + ' من ' + page.pages : '') + '</div>' +
+        (opts.duplicate ? '<div style="background:#7f0000; color:#fff; text-align:center; font-size:22px; font-weight:900; padding:15px; line-height:1.6;">' + escapeHtml_(dupWarningText_(opts.duplicate)) + '</div>' : '') +
         (opts.greenCard ? cardHtml : '<div style="border:2px solid ' + C_ACCENT + '; border-top:none; margin-bottom:14px;">' + metaHtml + '</div>') +
         '<table style="width:100%; border-collapse:collapse; border:2px solid ' + C_FRAME + ';"><thead><tr>' + headHtml + '</tr></thead><tbody>' + rowsHtml + totalsHtml + totalsExtraHtml + '</tbody></table>' +
-        (paged && !isLastPage ? '<div style="text-align:center; font-size:17px; font-weight:800; color:' + C_BANNER + '; margin-top:12px;">يتبع في الصفحة ' + (page.page + 1) + ' ←</div>' : '') +
-        '<div style="text-align:center; font-size:11px; color:#9a9a9a; font-style:italic; margin-top:14px;">تم إنشاء الملف تلقائيًا بتاريخ ' + stamp + '</div>' +
+        (paged && !isLastPage ? '<div style="text-align:center; font-size:20px; font-weight:800; color:' + C_BANNER + '; margin-top:12px;">يتبع في الصفحة ' + (page.page + 1) + ' ←</div>' : '') +
+        '<div style="text-align:center; font-size:13px; color:#9a9a9a; font-style:italic; margin-top:14px;">تم إنشاء الملف تلقائيًا بتاريخ ' + stamp + '</div>' +
       '</div>';
     document.body.appendChild(container);
 
     let blob, canvas;
     try{
-      canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      canvas = await html2canvas(container, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
       if(page && page.asCanvas) return { canvas: canvas };
       blob = await new Promise(function(resolve){ canvas.toBlob(resolve, 'image/png'); });
     } finally {
