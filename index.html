@@ -1693,6 +1693,7 @@
           <button type="button" onclick="rsSetPin_()">🔑 كود الدخول</button>
         </div>
         <div class="rsRow" style="margin-bottom:8px;"><button type="button" onclick="rsSetBranch_()">📍 الفرع</button></div>
+        <div class="rsRow" style="margin-bottom:8px;"><button type="button" onclick="rsRenameRep_()">✏️ تعديل الاسم</button></div>
         <div class="rsRow"><button type="button" class="danger" id="rsDelBtn" onclick="rsDelete_()">حذف المندوب</button></div>
       </div>
     </div>
@@ -1903,7 +1904,7 @@
   const SB_WRITE_ONLY_ = {finalizeInvoice:1, saveJard:1, saveTawrid:1,
     // الإعدادات بقت على Supabase بس (مفيش جوجل شيت خالص) — جوجل فاضل للدخول بالإيميل ورفع الصور بس
     listRepNames:1, savePrices:1, saveStaleReason:1, saveMyProfile:1, addSuggestion:1, deleteProductDescription:1, setAdProduct:1, clearAd:1,
-    addRep:1, setRepPin:1, setRepBranch:1, setRepAdmin:1, setRepSupervisors:1, deleteRep:1, addAsnaf:1, saveTarget:1};
+    addRep:1, setRepPin:1, setRepBranch:1, setRepAdmin:1, setRepSupervisors:1, deleteRep:1, addAsnaf:1, saveTarget:1, renameRep:1};
   function callSbWrite_(action, args, attempt){
     return fetch(SB_RPC_URL_, {
       method: 'POST',
@@ -4196,6 +4197,21 @@
       .catch(onError);
   }
   function rsDelete_(){ const r = state.adminReps_[rsIdx_]; closeRepSheet_(); handleDeleteRep(r.email, r.name); }
+  // تعديل اسم مندوب اتكتب غلط — السيرفر بيصحّح اسمه في كل الفواتير/التوريد/الجرد/الأهداف القديمة
+  // كمان (مش بس في جدول المناديب) عشان تاريخه القديم يفضل مربوط صح بيه ومايتقسمش على اسمين
+  function rsRenameRep_(){
+    const r = state.adminReps_[rsIdx_];
+    if(!r) return;
+    const v = prompt('تصحيح اسم "' + r.name + '" — هيتصحح في كل فواتيره القديمة كمان:', r.name || '');
+    if(v == null) return;
+    const newName = v.trim();
+    if(!newName || newName === r.name) return;
+    closeRepSheet_();
+    showLoading(true);
+    callApi('renameRep', [state.auth, r.email, newName])
+      .then(function(res){ showLoading(false); showMsg('تم تعديل الاسم ✔' + (res && res.newName ? ' — ' + res.newName : ''), 'success'); refreshRepsList(); })
+      .catch(onError);
+  }
   function renderRepsListOld_(reps){
     const el = document.getElementById('repsList');
     el.innerHTML = reps.map(function(r){
